@@ -1,49 +1,46 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <script src="https://code.jquery.com/jquery-3.1.1.min.js"
-	  integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
-	  crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.15.2/moment.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.min.css" />
-  <link rel="stylesheet" media="print" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.print.css" />
-
-  <style>
-  #form-bar { display: flex; padding: 1em 0; }
-  #add-teacher-form { }
-  #add-student-form { }
-  #add-teacher-form form, #add-student-form form { display: inline-block; padding-left: 1em; }
-  #weekday-form { flex: 1; text-align: center; }
-  .cal { display: block; float: left;  }
-  .last-teacher { border-right-width: 4px !important; border-color: black !important; }
-  #event-editor { border: 1px solid #999; border-width: 1px 0; padding: 1em 0; background: aliceblue; }
-  header menu { float: right; }
-  </style>
-</head>
-<body>
-
-<header>
-<menu>
-	<a href="#">export data</a>
-	<a href="#" class="delete">delete data</a>
-</menu>
-<h1>Classroom Scheduling Assistant</h1>
-</header>
-<main>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Random Stuff by JamesMaroney</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
 
 
-<form id="event-editor" style="display:none">
-	<strong>Add Entry: </strong>
-	<input type="hidden" name="id" value="" />
-	<input type="hidden" name="day" value="" />
-	<label>Teacher: <select name="teacher"></select></label>
-	<label>Student: <select name="student"></select></label>
-	<label>Activity: <input type="text" name="activity" /></label>
-	<label>Start Time: <input type="time" name="startTime" /></label>
-	<label>End Time: <input type="time" name="endTime" /></label>
-	<button type="submit">Save</button>
-</form>
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js"
+            integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.15.2/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.min.css" />
+    <link rel="stylesheet" media="print" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.print.css" />
+
+    <style>
+    .page-header { padding: 0; }
+    #form-bar { display: flex; padding: 1em .5em; }
+    #add-teacher-form { }
+    #add-student-form { }
+    #add-teacher-form form, #add-student-form form { display: inline-block; padding-left: 1em; }
+    #weekday-form { flex: 1; text-align: center; }
+    .cal { display: block; float: left;  }
+    .last-teacher { border-right-width: 4px !important; border-color: black !important; }
+    #event-editor { border: 1px solid #999; border-width: 1px 0; padding: 1em .5em; background: aliceblue; }
+    header menu { float: right; }
+    button[type='reset'] { border: none; background: none; font-size: 0.9em; text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Classroom Scheduler</h1>
+      <h2 class="project-tagline"></h2>
+    </section>
+
+    <section>
+
+
 
 <div id='form-bar'>
 	<div id='add-teacher-form'>
@@ -73,9 +70,22 @@
 	</div>
 </div>
 
+<form id="event-editor" style="display:none">
+	<strong><span id='addOrEdit'>Add</span> Entry: </strong>
+	<input type="hidden" name="id" value="" />
+	<input type="hidden" name="day" value="" />
+	<label>Teacher: <select name="teacher"></select></label>
+	<label>Student: <select name="student"></select></label>
+	<label>Activity: <input type="text" name="activity" /></label>
+	<label>Start Time: <input type="time" name="startTime" /></label>
+	<label>End Time: <input type="time" name="endTime" /></label>
+	<button type="submit">Save</button>
+	<button type="reset">Reset</button>
+</form>
+
+
 <div class="cal" id="cal-0"></div>
 
-</main>
 
 <script>
 var startDate = moment('1/2/2000');
@@ -168,6 +178,7 @@ var eventClicked = function(calEvent, jsEvent, view){
 	for(var key in event){
 		$('[name="'+key+'"]', form).val( event[key] );
 	}
+	$('#addOrEdit').text('Edit');
 }
 
 var dayClicked = function(d, jsEvent, view){
@@ -226,7 +237,7 @@ $(document).ready(function() {
     	.submit(function(ev){
 		ev.preventDefault();
 		var details = $(this).serializeArray();
-		var id = details.shift().value;
+		var id = parseInt(details.shift().value);
 		var event;
 		if(!id) {
 			event = { id: events.length + 1 };
@@ -240,7 +251,10 @@ $(document).ready(function() {
 		$('#cal-0').fullCalendar('refetchEvents');
 		save();
 		return false;
-	});
+	}).on('reset', function(){ 
+		$('#addOrEdit').text('Add'); 
+		$('[name="id"]', this).val(0);
+	})
 
     var endTimeInput = $('#event-editor input[name="endTime"]');
     $('#event-editor input[name="startTime"]').change(function(){
