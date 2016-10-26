@@ -28,8 +28,9 @@
     .cal { display: block; float: left;  }
     .last-teacher { border-right-width: 4px !important; border-color: black !important; }
     #event-editor { border: 1px solid #999; border-width: 1px 0; padding: 1em .5em; background: aliceblue; }
-    header menu { float: right; }
     button[type='reset'] { border: none; background: none; font-size: 0.9em; text-decoration: underline; }
+    .page-header a { float: right; margin: 1rem; }
+
 
     @media print {
 	@page { size: landscape; }
@@ -40,6 +41,7 @@
   </head>
   <body>
     <section class="page-header no-print">
+      <a href="#" class='btn' id='clear-all'>Clear All Data</a>
       <h1 class="project-name">Classroom Scheduler</h1>
       <h2 class="project-tagline"></h2>
     </section>
@@ -311,6 +313,16 @@ $(document).ready(function() {
 	refreshDayOfWeek();
 	$('#cal-0').fullCalendar('refetchEvents');
     })
+
+    $('#clear-all').click(function(){ 
+	var confirmed = confirm('Are you sure you want to remove all scheduling data? This cannot be undone.'); 
+	if(confirmed){
+		localStorage.removeItem('teachers');
+		localStorage.removeItem('students');
+		localStorage.removeItem('events');
+		window.location.reload();
+	}
+    });
 
     refreshDayOfWeek();
     redrawCalendar();
