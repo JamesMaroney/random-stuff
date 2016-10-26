@@ -2,7 +2,7 @@
 <html lang="en-us">
   <head>
     <meta charset="UTF-8">
-    <title>Random Stuff by JamesMaroney</title>
+    <title>Classroom Schedule</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
@@ -30,10 +30,16 @@
     #event-editor { border: 1px solid #999; border-width: 1px 0; padding: 1em .5em; background: aliceblue; }
     header menu { float: right; }
     button[type='reset'] { border: none; background: none; font-size: 0.9em; text-decoration: underline; }
+
+    @media print {
+	@page { size: landscape; }
+	.no-print { display: none !important; }
+    }
     </style>
+
   </head>
   <body>
-    <section class="page-header">
+    <section class="page-header no-print">
       <h1 class="project-name">Classroom Scheduler</h1>
       <h2 class="project-tagline"></h2>
     </section>
@@ -42,7 +48,7 @@
 
 
 
-<div id='form-bar'>
+<div id='form-bar' class="no-print">
 	<div id='add-teacher-form'>
 		<strong>Add a Teacher:</strong>
 		<form id="new-teacher">
@@ -70,7 +76,7 @@
 	</div>
 </div>
 
-<form id="event-editor" style="display:none">
+<form id="event-editor" style="display:none" class="no-print">
 	<strong><span id='addOrEdit'>Add</span> Entry: </strong>
 	<input type="hidden" name="id" value="" />
 	<input type="hidden" name="day" value="" />
@@ -201,6 +207,12 @@ var refreshStudents = function(){
 	showHideEventForm();
 }
 
+var refreshDayOfWeek = function(){
+    var day = $('#weekday').val();
+    $('#event-editor input[name="day"]').val(day);
+    document.title = "Classroom Schedule: " + day;
+}
+
 var showHideEventForm = function(){
 	if( students.length && teachers.length ) $('#event-editor').show()
 }
@@ -296,11 +308,11 @@ $(document).ready(function() {
     });
 
     $('#weekday').change(function(){
-    	$('#event-editor input[name="day"]').val($(this).val());
+	refreshDayOfWeek();
 	$('#cal-0').fullCalendar('refetchEvents');
     })
-    $('#event-editor input[name="day"]').val($('#weekday').val());
 
+    refreshDayOfWeek();
     redrawCalendar();
     refreshTeachers();
     refreshStudents();
