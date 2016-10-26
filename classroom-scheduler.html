@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"
+	  integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+	  crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.15.2/moment.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.min.css" />
+  <link rel="stylesheet" media="print" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.print.css" />
+
+  <style>
+  #form-bar { display: flex; padding: 1em 0; }
+  #add-teacher-form { }
+  #add-student-form { }
+  #add-teacher-form form, #add-student-form form { display: inline-block; padding-left: 1em; }
+  #weekday-form { flex: 1; text-align: center; }
+  .cal { display: block; float: left;  }
+  .last-teacher { border-right-width: 4px !important; border-color: black !important; }
+  #event-editor { border: 1px solid #999; border-width: 1px 0; padding: 1em 0; background: aliceblue; }
+  header menu { float: right; }
+  </style>
+</head>
+<body>
+
+<header>
+<menu>
+	<a href="#">export data</a>
+	<a href="#" class="delete">delete data</a>
+</menu>
+<h1>Classroom Scheduling Assistant</h1>
+</header>
+<main>
+
+
+<form id="event-editor" style="display:none">
+	<strong>Add Entry: </strong>
+	<input type="hidden" name="id" value="" />
+	<input type="hidden" name="day" value="" />
+	<label>Teacher: <select name="teacher"></select></label>
+	<label>Student: <select name="student"></select></label>
+	<label>Activity: <input type="text" name="activity" /></label>
+	<label>Start Time: <input type="time" name="startTime" /></label>
+	<label>End Time: <input type="time" name="endTime" /></label>
+	<button type="submit">Save</button>
+</form>
+
+<div id='form-bar'>
+	<div id='add-teacher-form'>
+		<strong>Add a Teacher:</strong>
+		<form id="new-teacher">
+			<input name="name" />
+			<button type="submit">Add</button>
+		</form>
+	</div>
+	<div id='weekday-form'>
+		<label>Weekday: 
+			<select id='weekday'>
+				<option>Monday</option>
+				<option>Tuesday</option>
+				<option>Wednesday</option>
+				<option>Thursday</option>
+				<option>Friday</option>
+			</select>
+		</label>
+	</div>
+	<div id='add-student-form'>
+		<strong>Add a Student:</strong>
+		<form id="new-student">
+			<input name="name" />
+			<button type="submit">Add</button>
+		</form>
+	</div>
+</div>
+
+<div class="cal" id="cal-0"></div>
+
+</main>
+
+<script>
+var startDate = moment('1/2/2000');
+var events = JSON.parse( localStorage.getItem('events') || '[]' );
+var teachers = JSON.parse( localStorage.getItem('teachers') || '[]' );
+var students = JSON.parse( localStorage.getItem('students') || '[]' );
+
+var save = function(){
+	localStorage.setItem('events', JSON.stringify(events));
+	localStorage.setItem('teachers', JSON.stringify(teachers));
+	localStorage.setItem('students', JSON.stringify(students));
+}
+
+
+var offsetTime = function(t, days){
+	var offsetDate = startDate.clone().add(days, 'days'),
+	    requestedTime = t.split(':');
+	return offsetDate.hour(requestedTime[0]).minute(requestedTime[1]);
+}
+
+var todaysEvents = function(){
+	var selectedDay = $('#weekday').val();
+	return events.filter( function(ev){ return ev.day == selectedDay; } );
+}
+
+var eventFromTeachersPerspective = function(event){
+	var dateOffset = teachers.indexOf(event.teacher),
+	    startTime = offsetTime(event.startTime, dateOffset),
+	    endTime = offsetTime(event.endTime, dateOffset);
+	
+	return {
+		id: event.id,
+		title: event.student + ': ' + event.activity,
+		start: startTime.toDate(),
+		end: endTime.toDate(),
+	}
+};
+var eventsSourceByTeacher = function(start,end,tz,callback){ callback( todaysEvents().map(eventFromTeachersPerspective) ); }
+
+var eventFromStudentsPerspective = function(event){
+	var dateOffset = teachers.length + students.indexOf(event.student),
+	    startTime = offsetTime(event.startTime, dateOffset),
+	    endTime = offsetTime(event.endTime, dateOffset);
+	
+	return {
+		id: event.id,
+		title: event.teacher + ': ' + event.activity,
+		start: startTime.toDate(),
+		end: endTime.toDate(),
+	}
+};
+var eventsSourceByStudent = function(start,end,tz,callback){ callback( todaysEvents().map(eventFromStudentsPerspective) ); }
+
+var eventChanged = function(updatedEvent, delta, revertFn, jsEvent, ui, view){
+	var originalEvent = events.find( function(ev){ return ev.id == updatedEvent.id; } );
+
+	// Did the student or teacher change?
+	var newColumnOffset = updatedEvent.start.diff(startDate, 'days');
+	if( newColumnOffset < teachers.length){
+		originalEvent.teacher = teachers[ newColumnOffset ];
+	} else {
+		originalEvent.student = students[ newColumnOffset - teachers.length ];
+	}
+
+	// Did the start time change?
+	originalEvent.startTime = updatedEvent.start.format('HH:mm');
+
+	// Did the end time change?
+	originalEvent.endTime = updatedEvent.end.format('HH:mm');
+
+	$('#cal-0').fullCalendar('refetchEvents');
+	save();
+}
+
+var postRender = function(view, el){
+	var t = teachers.length ? teachers : ['&uarr; Add a Teacher'];
+	var s = students.length ? students : ['&uarr; Add a Student']
+	var headers = t.concat(s);
+	$('th.fc-day-header', el).each(function(i, el){
+		$(el).html(headers[i] || '');
+	});
+	$('td.fc-day', el).eq(t.length-1).addClass('last-teacher');
+	$('th.fc-day-header', el).eq(t.length-1).addClass('last-teacher');
+
+}
+
+var eventClicked = function(calEvent, jsEvent, view){
+	var event = events.find(function(ev){ return ev.id == calEvent.id });
+	var form = $('#event-editor');
+	for(var key in event){
+		$('[name="'+key+'"]', form).val( event[key] );
+	}
+}
+
+var dayClicked = function(d, jsEvent, view){
+	$('#event-editor input[name="startTime"]').val( d.format('HH:mm') );
+}
+
+var refreshTeachers = function(){
+	var select = $('select[name="teacher"]').empty();
+	teachers.forEach(function(teacher){ select.append( $('<option>'+teacher+'</option>') ); });
+	$('#cal-0').fullCalendar('destroy');
+	redrawCalendar();
+	showHideEventForm();
+}
+
+var refreshStudents = function(){
+	var select = $('select[name="student"]').empty();
+	students.forEach(function(student){ select.append( $('<option>'+student+'</option>') ); });
+	$('#cal-0').fullCalendar('destroy');
+	redrawCalendar();
+	showHideEventForm();
+}
+
+var showHideEventForm = function(){
+	if( students.length && teachers.length ) $('#event-editor').show()
+}
+
+var redrawCalendar = function(){
+    $('#cal-0').fullCalendar({
+    	header: false,
+    	defaultDate: startDate,
+	defaultView: 'studentsAndTeachers',
+	editable: true,
+	views: {
+		studentsAndTeachers: {
+			type: 'agenda',
+			duration: { days: (teachers.length || 1) + (students.length || 1) },
+		}
+	},
+	eventSources: [ eventsSourceByStudent, eventsSourceByTeacher ],
+	allDaySlot: false,
+	slotDuration: "00:20:00",
+	minTime: "07:00:00",
+	maxTime: "16:00:00",
+	overlap: true,
+	eventResize: eventChanged,
+	eventDrop: eventChanged,
+	viewRender: postRender,
+	eventClick: eventClicked,
+	dayClick: dayClicked
+    });
+}
+
+$(document).ready(function() {
+
+    $('#event-editor')
+    	.submit(function(ev){
+		ev.preventDefault();
+		var details = $(this).serializeArray();
+		var id = details.shift().value;
+		var event;
+		if(!id) {
+			event = { id: events.length + 1 };
+			events.push(event);
+		} else {
+			event = events.find(function(ev){ return ev.id == id });
+		}
+
+		details.forEach(function(entry){ event[entry.name] = entry.value; });
+		this.reset();
+		$('#cal-0').fullCalendar('refetchEvents');
+		save();
+		return false;
+	});
+
+    var endTimeInput = $('#event-editor input[name="endTime"]');
+    $('#event-editor input[name="startTime"]').change(function(){
+    	// was it cleared? clear the endTime
+	if( !$(this).val() ){  endTimeInput.val(''); }
+	else {
+		// compute old time delta or pick default
+		var previousStart = $(this).data('previousValue');
+		var endTime = endTimeInput.val();
+		var delta = ( endTime && previousStart) 
+				? moment(endTime, 'HH:mm').diff( moment(previousStart, 'HH:mm'), 'minutes' )
+				: 10;
+		endTimeInput.val( moment($(this).val(), 'HH:mm').add(delta, 'minutes').format('HH:mm') );
+	}
+	$(this).data('previousValue', $(this).val());
+    });
+
+
+    $('#new-teacher').submit(function(ev){
+    	ev.preventDefault();
+	var name = $(this).serializeArray()[0].value;
+	teachers.push(name);
+	refreshTeachers();
+	this.reset();
+	$('input', this).eq(0).focus();
+	save();
+	return false;
+    });
+
+    $('#new-student').submit(function(ev){
+    	ev.preventDefault();
+	var name = $(this).serializeArray()[0].value;
+	students.push(name);
+	refreshStudents();
+	this.reset();
+	$('input', this).eq(0).focus();
+	save();
+	return false;
+    });
+
+    $('#weekday').change(function(){
+    	$('#event-editor input[name="day"]').val($(this).val());
+	$('#cal-0').fullCalendar('refetchEvents');
+    })
+    $('#event-editor input[name="day"]').val($('#weekday').val());
+
+    redrawCalendar();
+    refreshTeachers();
+    refreshStudents();
+
+});
+</script>
+</body>
+</html>
