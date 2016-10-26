@@ -1,6 +1,6 @@
 {
   "name": "Random Stuff",
   "tagline": "",
-  "body": "### What's this?\r\nSometimes I build random things. Sometimes I want to share them so others can use them if they want. Here you go.\r\n\r\n",
+  "body": "# What's this?\r\nSometimes I build random things. Sometimes I want to share them so others can use them if they want. Here you go.\r\n\r\n# List of stuff\r\n## [Classroom Scheduler](classroom-scheduler.html)\r\nCoordinating the schedules of students and paras in a single class can be a very time consuming task. This tool tries to help out by showing you the schedule by student and by teacher/para at the same time as you make edits.\r\n\r\n\r\n",
   "note": "Don't delete this file! It's used internally to help with page regeneration."
 }
