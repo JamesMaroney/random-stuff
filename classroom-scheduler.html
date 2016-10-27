@@ -365,7 +365,7 @@ $(document).ready(function() {
     $('#new-teacher').submit(function(ev){
     	ev.preventDefault();
 	var name = $(this).serializeArray()[0].value;
-	teachers.push(name);
+	if(teachers.indexOf(name) == -1) teachers.push(name);
 	refreshTeachers();
 	this.reset();
 	$('input', this).eq(0).focus();
@@ -376,7 +376,7 @@ $(document).ready(function() {
     $('#new-student').submit(function(ev){
     	ev.preventDefault();
 	var name = $(this).serializeArray()[0].value;
-	students.push(name);
+	if(students.indexOf(name) == -1) students.push(name);
 	refreshStudents();
 	this.reset();
 	$('input', this).eq(0).focus();
