@@ -451,9 +451,7 @@ $(document).ready(function() {
     $('#clear-all').click(function(){ 
 	var confirmed = confirm('Are you sure you want to remove all scheduling data? This cannot be undone.'); 
 	if(confirmed){
-		localStorage.removeItem('teachers');
-		localStorage.removeItem('students');
-		localStorage.removeItem('events');
+		localStorage.removeItem('data');
 		window.location.reload();
 	}
     });
