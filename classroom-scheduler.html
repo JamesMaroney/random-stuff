@@ -326,6 +326,7 @@ var refreshDayOfWeek = function(){
 var refreshWorkday = function(){
     data.workday.start = $('#workday-start').val();
     data.workday.end = $('#workday-end').val();
+    save();
     $('#cal-0').fullCalendar('destroy');
     redrawCalendar();
 }
