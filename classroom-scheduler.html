@@ -27,7 +27,11 @@
     #weekday-form { flex: 1; text-align: center; }
     .cal { display: block; float: left;  }
     .last-teacher { border-right-width: 4px !important; border-color: black !important; }
-    #event-editor { border: 1px solid #999; border-width: 1px 0; padding: 1em .5em; background: aliceblue; }
+    #event-editor { border: 1px solid #999; border-width: 1px 0; padding: 1em 5em; background: aliceblue; }
+    #event-editor footer { text-align: right; max-width: 420px; }
+    #event-editor label { margin: .2em .5em .2em 0; }
+    label { display: inline-block; }
+    select[multiple] { vertical-align: top; min-width: 100%; }
     button[type='reset'] { border: none; background: none; font-size: 0.9em; text-decoration: underline; }
     .page-header a { float: right; margin: 1rem; }
 
@@ -81,14 +85,18 @@
 <form id="event-editor" style="display:none" class="no-print">
 	<strong><span id='addOrEdit'>Add</span> Entry: </strong>
 	<input type="hidden" name="id" value="" />
-	<input type="hidden" name="day" value="" />
-	<label>Teacher: <select name="teacher"></select></label>
-	<label>Student: <select name="student"></select></label>
 	<label>Activity: <input type="text" name="activity" /></label>
+	<br />
 	<label>Start Time: <input type="time" name="startTime" /></label>
 	<label>End Time: <input type="time" name="endTime" /></label>
-	<button type="submit">Save</button>
-	<button type="reset">Reset</button>
+	<br />
+	<label>Teachers: <br /><select name="teachers" multiple></select></label>
+	<label>Students: <br /><select name="students" multiple></select></label>
+	<label>Days: <br /><select name="days" multiple> <option>Monday</option> <option>Tuesday</option> <option>Wednesday</option> <option>Thursday</option> <option>Friday</option> </select></label>
+	<footer>
+		<button type="reset">Reset</button>
+		<button type="submit">Save</button>
+	</footer>
 </form>
 
 
@@ -101,11 +109,24 @@ var events = JSON.parse( localStorage.getItem('events') || '[]' );
 var teachers = JSON.parse( localStorage.getItem('teachers') || '[]' );
 var students = JSON.parse( localStorage.getItem('students') || '[]' );
 
+
 var save = function(){
 	localStorage.setItem('events', JSON.stringify(events));
 	localStorage.setItem('teachers', JSON.stringify(teachers));
 	localStorage.setItem('students', JSON.stringify(students));
 }
+
+// upgrade existing events teacher->teachers, student->students
+for(i in events){
+	var event = events[i];
+	if(!event.teachers) event.teachers = [event.teacher];
+	if(!event.students) event.students = [event.student];
+	if(!event.days) event.days = [event.day];
+	delete event.teacher;
+	delete event.student;
+	delete event.day;
+}
+save();
 
 
 var offsetTime = function(t, days){
@@ -116,46 +137,87 @@ var offsetTime = function(t, days){
 
 var todaysEvents = function(){
 	var selectedDay = $('#weekday').val();
-	return events.filter( function(ev){ return ev.day == selectedDay; } );
+	return events.filter( function(ev){ return ev.days.indexOf(selectedDay) > -1; } );
 }
 
 var eventFromTeachersPerspective = function(event){
-	var dateOffset = teachers.indexOf(event.teacher),
-	    startTime = offsetTime(event.startTime, dateOffset),
-	    endTime = offsetTime(event.endTime, dateOffset);
-	
-	return {
-		id: event.id,
-		title: event.student + ': ' + event.activity,
-		start: startTime.toDate(),
-		end: endTime.toDate(),
-	}
+	var teacherColumnsConstraint = {
+		start: startDate.clone().startOf('day'),
+		end: startDate.clone().add(teachers.length-1, 'days').endOf('day')
+	};
+	return event.teachers.map(function(teacher){
+		var dateOffset = teachers.indexOf(teacher),
+		    startTime = offsetTime(event.startTime, dateOffset),
+		    endTime = offsetTime(event.endTime, dateOffset);
+		return {
+			id: event.id,
+			title: event.students.join(', ') + ': ' + event.activity,
+			start: startTime.toDate(),
+			end: endTime.toDate(),
+			constraint: teacherColumnsConstraint
+		};
+	});
 };
-var eventsSourceByTeacher = function(start,end,tz,callback){ callback( todaysEvents().map(eventFromTeachersPerspective) ); }
+var eventsSourceByTeacher = function(start,end,tz,callback){ 
+	callback( 
+		todaysEvents().reduce(function(acc, evt){
+			return acc.concat( eventFromTeachersPerspective(evt) );
+		}, [])
+	); 
+}
 
 var eventFromStudentsPerspective = function(event){
-	var dateOffset = teachers.length + students.indexOf(event.student),
-	    startTime = offsetTime(event.startTime, dateOffset),
-	    endTime = offsetTime(event.endTime, dateOffset);
-	
-	return {
-		id: event.id,
-		title: event.teacher + ': ' + event.activity,
-		start: startTime.toDate(),
-		end: endTime.toDate(),
-	}
+	var studentColumnsConstraint = {
+		start: startDate.clone().add(teachers.length, 'days').startOf('day'),
+		end: startDate.clone().add(teachers.length + students.length - 1, 'days').endOf('day')
+	};
+	return event.students.map(function(student){
+		var dateOffset = teachers.length + students.indexOf(student),
+		    startTime = offsetTime(event.startTime, dateOffset),
+		    endTime = offsetTime(event.endTime, dateOffset);
+		
+		return {
+			id: event.id,
+			title: event.teachers.join(', ') + ': ' + event.activity,
+			start: startTime.toDate(),
+			end: endTime.toDate(),
+			constraint: studentColumnsConstraint
+		}
+	});
 };
-var eventsSourceByStudent = function(start,end,tz,callback){ callback( todaysEvents().map(eventFromStudentsPerspective) ); }
+var eventsSourceByStudent = function(start,end,tz,callback){ 
+	callback( 
+		todaysEvents().reduce(function(acc, evt){
+			return acc.concat( eventFromStudentsPerspective(evt) );
+		}, [])
+	); 
+}
 
 var eventChanged = function(updatedEvent, delta, revertFn, jsEvent, ui, view){
 	var originalEvent = events.find( function(ev){ return ev.id == updatedEvent.id; } );
 
 	// Did the student or teacher change?
-	var newColumnOffset = updatedEvent.start.diff(startDate, 'days');
+	var newColumnOffset = updatedEvent.start.diff(startDate, 'days'),
+	    originalColumnOffset = updatedEvent.start.clone().subtract(delta).diff(startDate, 'days');
+
 	if( newColumnOffset < teachers.length){
-		originalEvent.teacher = teachers[ newColumnOffset ];
+		var selectedTeacher = teachers[ newColumnOffset ],
+		    originalTeacher = teachers[ originalColumnOffset ];
+		if( originalEvent.teachers.indexOf(selectedTeacher) == -1 ){
+			if( !jsEvent.shiftKey ){
+				originalEvent.teachers = originalEvent.teachers.filter( function(t){ return t != originalTeacher } );
+			}
+			originalEvent.teachers.push(selectedTeacher);
+		}
 	} else {
-		originalEvent.student = students[ newColumnOffset - teachers.length ];
+		var selectedStudent = students[ newColumnOffset - teachers.length ]
+		    originalStudent = students[ originalColumnOffset - teachers.length ];
+		if( originalEvent.students.indexOf(selectedStudent) == -1 ){
+			if( !jsEvent.shiftKey ){
+				originalEvent.students = originalEvent.students.filter( function(s){ return s != originalStudent });
+			}
+			originalEvent.students.push(selectedStudent);
+		}
 	}
 
 	// Did the start time change?
@@ -194,7 +256,7 @@ var dayClicked = function(d, jsEvent, view){
 }
 
 var refreshTeachers = function(){
-	var select = $('select[name="teacher"]').empty();
+	var select = $('select[name="teachers"]').empty();
 	teachers.forEach(function(teacher){ select.append( $('<option>'+teacher+'</option>') ); });
 	$('#cal-0').fullCalendar('destroy');
 	redrawCalendar();
@@ -202,7 +264,7 @@ var refreshTeachers = function(){
 }
 
 var refreshStudents = function(){
-	var select = $('select[name="student"]').empty();
+	var select = $('select[name="students"]').empty();
 	students.forEach(function(student){ select.append( $('<option>'+student+'</option>') ); });
 	$('#cal-0').fullCalendar('destroy');
 	redrawCalendar();
@@ -211,7 +273,7 @@ var refreshStudents = function(){
 
 var refreshDayOfWeek = function(){
     var day = $('#weekday').val();
-    $('#event-editor input[name="day"]').val(day);
+    $('#event-editor [name="days"]').val(day);
     document.title = "Classroom Schedule: " + day;
 }
 
@@ -245,12 +307,20 @@ var redrawCalendar = function(){
     });
 }
 
+var serializeForm = function(form){
+	var details = form.serializeArray();
+	$('select[multiple]').each(function(){
+		details.push( { name: this.name, value: $(this).val()} );
+	});
+	return details;
+}
+
 $(document).ready(function() {
 
     $('#event-editor')
     	.submit(function(ev){
 		ev.preventDefault();
-		var details = $(this).serializeArray();
+		var details = serializeForm( $(this) );
 		var id = parseInt(details.shift().value);
 		var event;
 		if(!id) {
@@ -268,6 +338,8 @@ $(document).ready(function() {
 	}).on('reset', function(){ 
 		$('#addOrEdit').text('Add'); 
 		$('[name="id"]', this).val(0);
+		var f = this;
+		setTimeout( function(){ $('[name="days"]', f).val($('#weekday').val()) }, 0);
 	})
 
     var endTimeInput = $('#event-editor input[name="endTime"]');
