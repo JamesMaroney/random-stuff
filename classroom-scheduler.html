@@ -195,6 +195,7 @@ var eventsSourceByStudent = function(start,end,tz,callback){
 
 var eventChanged = function(updatedEvent, delta, revertFn, jsEvent, ui, view){
 	var originalEvent = events.find( function(ev){ return ev.id == updatedEvent.id; } );
+	eventClicked(updatedEvent);
 
 	// Did the student or teacher change?
 	var newColumnOffset = updatedEvent.start.diff(startDate, 'days'),
@@ -251,8 +252,9 @@ var eventClicked = function(calEvent, jsEvent, view){
 	$('#addOrEdit').text('Edit');
 }
 
-var dayClicked = function(d, jsEvent, view){
-	$('#event-editor input[name="startTime"]').val( d.format('HH:mm') );
+var rangeSelected = function(start, end){
+	$('#event-editor input[name="startTime"]').val( start.format('HH:mm') );
+	$('#event-editor input[name="endTime"]').val( end.format('HH:mm') );
 }
 
 var refreshTeachers = function(){
@@ -299,11 +301,12 @@ var redrawCalendar = function(){
 	minTime: "07:00:00",
 	maxTime: "16:00:00",
 	overlap: true,
+	selectable: true,
 	eventResize: eventChanged,
 	eventDrop: eventChanged,
 	viewRender: postRender,
 	eventClick: eventClicked,
-	dayClick: dayClicked
+	select: rangeSelected
     });
 }
 
@@ -331,9 +334,9 @@ $(document).ready(function() {
 		}
 
 		details.forEach(function(entry){ event[entry.name] = entry.value; });
+		save();
 		this.reset();
 		$('#cal-0').fullCalendar('refetchEvents');
-		save();
 		return false;
 	}).on('reset', function(){ 
 		$('#addOrEdit').text('Add'); 
