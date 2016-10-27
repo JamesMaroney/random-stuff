@@ -231,16 +231,48 @@ var eventChanged = function(updatedEvent, delta, revertFn, jsEvent, ui, view){
 	save();
 }
 
+var renameForm = $('<form><input name="new-name" /><button type="submit">Save</button></form>')
+var insertRenameForm = function(th, renameType){
+	var originalName = th.text(),
+	    form = renameForm.clone(),
+	    input = $('input', form).val(originalName);
+	form.submit(function(ev){ 
+		ev.preventDefault();
+		rename(renameType, originalName, input.val()); 
+		return false;
+	}).click(function(ev){ ev.stopPropagation(); });
+	th.empty().append( form );
+	input.focus();
+}
+
+var rename = function(type, oldName, newName){
+	var arr = (type == 'teacher') ? teachers : students;
+	if( !newName ) return;
+	if( arr.indexOf(newName) > -1 ){ alert('A '+type+' with that name already exists.'); return; }
+	var teachersOrStudents = (type == 'teacher') ? 'teachers' : 'students';
+	arr[ arr.indexOf(oldName) ] = newName;
+	for(var i in events){
+		var event = events[i];
+		var j = event[teachersOrStudents].indexOf(oldName);
+		if(j > -1) event[teachersOrStudents][j] = newName;
+	}
+	save();
+	(type == 'teacher') ? refreshTeachers() : refreshStudents();
+	$('#cal-0').fullCalendar('refetchEvents');
+}
+
 var postRender = function(view, el){
 	var t = teachers.length ? teachers : ['&uarr; Add a Teacher'];
 	var s = students.length ? students : ['&uarr; Add a Student']
 	var headers = t.concat(s);
-	$('th.fc-day-header', el).each(function(i, el){
+	var th = $('th.fc-day-header', el).each(function(i, el){
 		$(el).html(headers[i] || '');
 	});
+	th.slice(0,t.length).click(function(){ insertRenameForm($(this), 'teacher') });
+	th.slice(t.length).click(function(){ insertRenameForm($(this), 'student') });
+
 	$('td.fc-day', el).eq(t.length-1).addClass('last-teacher');
 	$('th.fc-day-header', el).eq(t.length-1).addClass('last-teacher');
-
 }
 
 var eventClicked = function(calEvent, jsEvent, view){
@@ -365,6 +397,7 @@ $(document).ready(function() {
     $('#new-teacher').submit(function(ev){
     	ev.preventDefault();
 	var name = $(this).serializeArray()[0].value;
+	if( !name ) return;
 	if(teachers.indexOf(name) == -1) teachers.push(name);
 	refreshTeachers();
 	this.reset();
@@ -376,6 +409,7 @@ $(document).ready(function() {
     $('#new-student').submit(function(ev){
     	ev.preventDefault();
 	var name = $(this).serializeArray()[0].value;
+	if( !name ) return;
 	if(students.indexOf(name) == -1) students.push(name);
 	refreshStudents();
 	this.reset();
