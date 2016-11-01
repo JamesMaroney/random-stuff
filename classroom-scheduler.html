@@ -100,7 +100,9 @@
 	<form id="event-editor" style="display:none" class="no-print">
 		<strong><span id='addOrEdit'>Add</span> Entry: </strong>
 		<input type="hidden" name="id" value="" />
-		<label>Activity: <input type="text" name="activity" /></label>
+		<label>Activity: <input type="text" name="activity" list="activity-list" /></label>
+		<datalist id="activity-list"></datalist>
+		<label><input type="checkbox" id='save-to-quicklist' /> Save to QuickList</label>
 		<br />
 		<label>Start Time: <input type="time" name="startTime" /></label>
 		<label>End Time: <input type="time" name="endTime" /></label>
@@ -156,6 +158,8 @@ var students = data.students;
 
 // put a default duration if doesn't exist
 data.workday.duration = data.workday.duration || '20';
+
+data.quicklist = data.quicklist || [];
 
 save();
 
@@ -368,6 +372,12 @@ var refreshWorkday = function(){
     redrawCalendar();
 }
 
+var activityList = $('#activity-list');
+var refreshQuickList = function(){
+   activityList.empty();
+   data.quicklist.forEach(function(a){ activityList.append('<option>'+a+'</option>') });
+}
+
 var showHideEventForm = function(){
 	if( students.length && teachers.length ) $('#event-editor').show()
 }
@@ -431,6 +441,11 @@ $(document).ready(function() {
 		}
 
 		details.forEach(function(entry){ event[entry.name] = entry.value; });
+		if($('#save-to-quicklist').is(':checked') && (data.quicklist.indexOf(event.activity) == -1)){
+			data.quicklist.push(event.activity);
+			data.quicklist.sort();
+			refreshQuickList();
+		}
 		save();
 		this.reset();
 		$('#cal-0').fullCalendar('refetchEvents');
@@ -507,6 +522,7 @@ $(document).ready(function() {
     redrawCalendar();
     refreshTeachers();
     refreshStudents();
+    refreshQuickList();
     printRenderEnabled = true;
     refreshPrintView();
 });
