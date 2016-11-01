@@ -21,14 +21,20 @@
 
     <style>
     .page-header { padding: 0; }
-    #form-bar { display: flex; padding: 1em .5em; width:100% }
-    #add-teacher-form { }
-    #add-student-form { }
+    #form-bar { display: flex; padding: 1em .5em; width:100%; background: aliceblue; flex-wrap: wrap; }
+    #add-teacher-form { flex: 1; white-space: nowrap; }
+    #add-student-form { flex: 1; text-align: right; white-space: nowrap; }
+    #weekday-form { flex: 1; text-align: center; white-space: nowrap; }
+    @media (max-width: 1400px){
+      #add-teacher-form { order: 1; }
+      #add-student-form { order: 2; }
+      #weekday-form { order: 3; min-width: 100%; }
+    }
     #add-teacher-form form, #add-student-form form { display: inline-block; padding-left: 1em; }
-    #weekday-form { flex: 1; text-align: center; }
     .cal { display: block; float: left;  }
     .last-teacher { border-right-width: 4px !important; border-right-color: black !important; }
-    #event-editor { border: 1px solid #999; border-width: 1px 0; padding: 1em 5em; background: aliceblue; }
+    #cal-and-form-container { display: flex; }
+    #event-editor { padding: .5em; background: aliceblue; width: 300px; }
     #event-editor footer { text-align: right; max-width: 420px; }
     #event-editor label { margin: .2em .5em .2em 0; }
     label { display: inline-block; }
@@ -90,25 +96,27 @@
 	</div>
 </div>
 
-<form id="event-editor" style="display:none" class="no-print">
-	<strong><span id='addOrEdit'>Add</span> Entry: </strong>
-	<input type="hidden" name="id" value="" />
-	<label>Activity: <input type="text" name="activity" /></label>
-	<br />
-	<label>Start Time: <input type="time" name="startTime" /></label>
-	<label>End Time: <input type="time" name="endTime" /></label>
-	<br />
-	<label>Teachers: <br /><select name="teachers" multiple></select></label>
-	<label>Students: <br /><select name="students" multiple></select></label>
-	<label>Days: <br /><select name="days" multiple> <option>Monday</option> <option>Tuesday</option> <option>Wednesday</option> <option>Thursday</option> <option>Friday</option> </select></label>
-	<footer>
-		<button type="reset">Reset</button>
-		<button type="submit">Save</button>
-	</footer>
-</form>
+<div id="cal-and-form-container">
+	<form id="event-editor" style="display:none" class="no-print">
+		<strong><span id='addOrEdit'>Add</span> Entry: </strong>
+		<input type="hidden" name="id" value="" />
+		<label>Activity: <input type="text" name="activity" /></label>
+		<br />
+		<label>Start Time: <input type="time" name="startTime" /></label>
+		<label>End Time: <input type="time" name="endTime" /></label>
+		<br />
+		<label>Teachers: <br /><select name="teachers" multiple></select></label>
+		<label>Students: <br /><select name="students" multiple></select></label>
+		<label>Days: <br /><select name="days" size="5" multiple> <option>Monday</option> <option>Tuesday</option> <option>Wednesday</option> <option>Thursday</option> <option>Friday</option> </select></label>
+		<footer>
+			<button type="reset">Reset</button>
+			<button type="submit">Save</button>
+		</footer>
+	</form>
 
 
-<div class="cal no-print" id="cal-0"></div>
+	<div class="cal no-print" id="cal-0"></div>
+</div>
 <div id="cal-print"></div>
 
 
