@@ -15,6 +15,7 @@
             crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.15.2/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.min.js"></script>
+	<script src="https://github.com/niklasvh/html2canvas/releases/download/0.5.0-alpha1/html2canvas.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.min.css" />
     <link rel="stylesheet" media="print" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.0.1/fullcalendar.print.css" />
 
@@ -26,7 +27,7 @@
     #add-teacher-form form, #add-student-form form { display: inline-block; padding-left: 1em; }
     #weekday-form { flex: 1; text-align: center; }
     .cal { display: block; float: left;  }
-    .last-teacher { border-right-width: 4px !important; border-color: black !important; }
+    .last-teacher { border-right-width: 4px !important; border-right-color: black !important; }
     #event-editor { border: 1px solid #999; border-width: 1px 0; padding: 1em 5em; background: aliceblue; }
     #event-editor footer { text-align: right; max-width: 420px; }
     #event-editor label { margin: .2em .5em .2em 0; }
@@ -34,11 +35,15 @@
     select[multiple] { vertical-align: top; min-width: 100%; }
     button[type='reset'] { border: none; background: none; font-size: 0.9em; text-decoration: underline; }
     .page-header a { float: right; margin: 1rem; }
+    #block-duration { width: 3em; }
+    #cal-print { display: none; }
+    #cal-print canvas { width: 100% !important; }
 
 
     @media print {
 	@page { size: landscape; }
 	.no-print { display: none !important; }
+	#cal-print { display: block; }
     }
     </style>
 
@@ -72,7 +77,9 @@
 				<option>Friday</option>
 			</select>
 		</label>
-		<input type="time" id="workday-start" /> - <input type="time" id="workday-end" />
+		<input type="time" id="workday-start" title="Start Time" /> - 
+		<input type="time" id="workday-end" title="End Time" />
+		in <input type="number" id="block-duration" title="Time Blocks" /> minute blocks
 	</div>
 	<div id='add-student-form'>
 		<strong>Add a Student:</strong>
@@ -101,14 +108,15 @@
 </form>
 
 
-<div class="cal" id="cal-0"></div>
+<div class="cal no-print" id="cal-0"></div>
+<div id="cal-print"></div>
 
 
 <script>
 var startDate = moment('1/2/2000');
 
 var data = JSON.parse( localStorage.getItem('data') || '{}' );
-data.workday = data.workday || { start: '07:00', end: '16:00' };
+data.workday = data.workday || { start: '07:00', end: '16:00', duration: '20' };
 
 
 var save = function(){
@@ -138,8 +146,19 @@ var events = data.events;
 var teachers = data.teachers;
 var students = data.students;
 
+// put a default duration if doesn't exist
+data.workday.duration = data.workday.duration || '20';
+
 save();
 
+var calEl = $('#cal-0'), 
+    printTarget=$('#cal-print')
+    printRenderEnabled = true;
+var refreshPrintView = function(){
+	if(! printRenderEnabled) return;
+	console.log('refreshing print view');
+	html2canvas(calEl[0], { onrendered: function(c){ printTarget.empty().append(c); }});
+}
 
 var offsetTime = function(t, days){
 	var offsetDate = startDate.clone().add(days, 'days'),
@@ -243,6 +262,7 @@ var eventChanged = function(updatedEvent, delta, revertFn, jsEvent, ui, view){
 
 	$('#cal-0').fullCalendar('refetchEvents');
 	save();
+	refreshPrintView();
 }
 
 var renameForm = $('<form><input name="new-name" /><button type="submit">Save</button></form>')
@@ -275,6 +295,7 @@ var rename = function(type, oldName, newName){
 	}
 	(type == 'teacher') ? refreshTeachers() : refreshStudents();
 	$('#cal-0').fullCalendar('refetchEvents');
+	refreshPrintView();
 }
 
 var postRender = function(view, el){
@@ -291,6 +312,7 @@ var postRender = function(view, el){
 
 	$('td.fc-day', el).eq(t.length-1).addClass('last-teacher');
 	$('th.fc-day-header', el).eq(t.length-1).addClass('last-teacher');
+	refreshPrintView();
 }
 
 var eventClicked = function(calEvent, jsEvent, view){
@@ -332,6 +354,7 @@ var refreshDayOfWeek = function(){
 var refreshWorkday = function(){
     data.workday.start = $('#workday-start').val();
     data.workday.end = $('#workday-end').val();
+    data.workday.duration = $('#block-duration').val();
     save();
     $('#cal-0').fullCalendar('destroy');
     redrawCalendar();
@@ -346,7 +369,6 @@ var redrawCalendar = function(){
     	header: false,
     	defaultDate: startDate,
 	defaultView: 'studentsAndTeachers',
-	editable: true,
 	views: {
 		studentsAndTeachers: {
 			type: 'agenda',
@@ -354,11 +376,17 @@ var redrawCalendar = function(){
 		}
 	},
 	eventSources: [ eventsSourceByStudent, eventsSourceByTeacher ],
+	eventBackgroundColor: '#FFF',
+	eventTextColor: '#000',
+	eventBorderColor: '#000',
+	timeFormat: ' ',
+	editable: true,
 	allDaySlot: false,
-	slotDuration: "00:20:00",
+	slotDuration: "00:"+data.workday.duration+":00",
 	minTime: data.workday.start,
 	maxTime: data.workday.end,
-	overlap: true,
+	//overlap: true,
+	slotEventOverlap: false,
 	selectable: true,
 	contentHeight: 'auto',
 	eventResize: eventChanged,
@@ -367,6 +395,7 @@ var redrawCalendar = function(){
 	eventClick: eventClicked,
 	select: rangeSelected
     });
+    refreshPrintView();
 }
 
 var serializeForm = function(form){
@@ -379,6 +408,7 @@ var serializeForm = function(form){
 
 $(document).ready(function() {
 
+    printRenderEnabled = false;
     $('#event-editor')
     	.submit(function(ev){
 		ev.preventDefault();
@@ -396,6 +426,7 @@ $(document).ready(function() {
 		save();
 		this.reset();
 		$('#cal-0').fullCalendar('refetchEvents');
+		refreshPrintView();
 		return false;
 	}).on('reset', function(){ 
 		$('#addOrEdit').text('Add'); 
@@ -448,10 +479,12 @@ $(document).ready(function() {
     $('#weekday').change(function(){
 	refreshDayOfWeek();
 	$('#cal-0').fullCalendar('refetchEvents');
+	refreshPrintView();
     })
 
     $('#workday-start').val( data.workday.start ).change(refreshWorkday);
     $('#workday-end').val( data.workday.end ).change(refreshWorkday);
+    $('#block-duration').val( data.workday.duration).change(refreshWorkday);
 	
 
     $('#clear-all').click(function(){ 
@@ -466,8 +499,10 @@ $(document).ready(function() {
     redrawCalendar();
     refreshTeachers();
     refreshStudents();
-
+    printRenderEnabled = true;
+    refreshPrintView();
 });
+
 </script>
 
 <section class='main-content no-print'>
