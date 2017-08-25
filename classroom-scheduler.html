@@ -45,6 +45,10 @@
     #cal-print { display: none; }
     #cal-print canvas { width: 100% !important; }
     #cal-0 { box-shadow: 0 0 15px #aaa; border-radius: 10px 0 0 0; } 
+    th form { text-align: left; display: flex; flex-direction: row; align-items: center; }
+    th input { border: 0; flex-grow: 1; }
+    th input:focus { outline: 0; }
+    th a { font-size: 0.9em; font-weight: normal; margin-right: 10px; }
 
 
     @media print {
@@ -277,16 +281,21 @@ var eventChanged = function(updatedEvent, delta, revertFn, jsEvent, ui, view){
 	refreshPrintView();
 }
 
-var renameForm = $('<form><input name="new-name" /><button type="submit">Save</button></form>')
+var renameForm = $('<form><input name="new-name" /><a href="#">delete</a><button type="submit">Save</button></form>')
 var insertRenameForm = function(th, renameType){
 	var originalName = th.text(),
-	    form = renameForm.clone(),
-	    input = $('input', form).val(originalName);
-	form.submit(function(ev){ 
+        form = renameForm.clone(),
+        input = $('input', form).val(originalName),
+        link = $('a', form);
+    form.submit(function(ev){ 
 		ev.preventDefault();
 		rename(renameType, originalName, input.val()); 
 		return false;
-	}).click(function(ev){ ev.stopPropagation(); });
+    }).click(function(ev){ ev.stopPropagation(); });
+    link.click(function(ev){ 
+        ev.stopPropagation(); 
+        remove(renameType, originalName);
+	});
 	th.empty().append( form );
 	input.focus();
 }
@@ -308,6 +317,52 @@ var rename = function(type, oldName, newName){
 	(type == 'teacher') ? refreshTeachers() : refreshStudents();
 	$('#cal-0').fullCalendar('refetchEvents');
 	refreshPrintView();
+}
+
+var remove = function(type, name){
+    if(type == 'student'){
+        for(var i in events){
+            var event = events[i];
+            event.students = event.students.filter(function(s){ return s != name })
+            if(event.students.length == 0){
+                events.splice(i,1);
+            }
+        }
+        students.splice( students.indexOf(name), 1 );
+    } else {
+        orphanedEvents = [];
+        for(var i in events){
+            var event = events[i];
+            if(event.teachers.indexOf(name) > -1){
+                if(event.teachers.length == 1){
+                    orphanedEvents.push(event);
+                } else {
+                    event.teachers.splice( event.teachers.indexOf(name), 1 );
+                }
+            }
+        }
+        if(orphanedEvents.length == 0){
+            teachers.splice( teachers.indexOf(name), 1 );
+        } else { 
+            var orphanedDays = {};
+            for(var i in orphanedEvents){
+                for(var j in orphanedEvents[i].days){
+                    orphanedDays[ orphanedEvents[i].days[j]] = 1;
+                }
+            }
+            orphanedDays = Object.keys(orphanedDays)
+            alert(orphanedEvents.length + ' ' + ( orphanedEvents.length > 1 ? 'activities' : 'activity' ) + ' '
+                + 'need to be reassigned before this teacher can be removed.\r\n\r\n'
+                + 'Reassign the activities left and then try removing the teacher again.\r\n\r\n'
+                + 'Days affected: ' + orphanedDays.join(', '));
+        }
+    }
+	
+    save();
+    refreshTeachers()
+    refreshStudents();
+    $('#cal-0').fullCalendar('refetchEvents');
+    refreshPrintView();
 }
 
 var postRender = function(view, el){
