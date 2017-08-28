@@ -61,6 +61,7 @@
   </head>
   <body>
     <section class="page-header no-print">
+      <a href="#" class='btn' id='download' style='display:none'>Save to File</a>
       <a href="#" class='btn' id='clear-all'>Clear All Data</a>
       <h1 class="project-name">Classroom Scheduler</h1>
     </section>
@@ -134,7 +135,13 @@ data.workday = data.workday || { start: '07:00', end: '16:00', duration: '20' };
 
 
 var save = function(){
-	localStorage.setItem('data', JSON.stringify(data));
+  var jsonData = JSON.stringify(data);
+  localStorage.setItem('data', jsonData);
+	
+  var a = document.querySelector("a#download");
+  var file = new Blob([jsonData], {type: 'text/plain'});
+  a.href = URL.createObjectURL(file);
+  a.download = 'classroom-schedule.json';
 }
 
 // upgrade existing events teacher->teachers, student->students
