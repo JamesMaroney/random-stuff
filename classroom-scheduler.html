@@ -438,6 +438,10 @@ var showHideEventForm = function(){
 }
 
 var redrawCalendar = function(){
+    // align the start of day with the requested duration to avoid a bug with showing times in the calendar
+    var startOfDay = data.workday.start.split(":"),
+        aligned_mins = Number(startOfDay[1]) - (Number(startOfDay[1]) % Number(data.workday.duration)),
+        startOfDay = [startOfDay[0],aligned_mins].join(':');
     $('#cal-0').fullCalendar({
     	header: false,
     	defaultDate: startDate,
@@ -455,7 +459,7 @@ var redrawCalendar = function(){
 	editable: true,
 	allDaySlot: false,
 	slotDuration: "00:"+data.workday.duration+":00",
-	minTime: data.workday.start,
+	minTime: startOfDay,
 	maxTime: data.workday.end,
 	//overlap: true,
 	slotEventOverlap: false,
