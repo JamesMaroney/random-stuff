@@ -52,7 +52,8 @@
 
 
     @media print {
-	@page { size: landscape; }
+	@page { size: landscape; margin: 0; }
+	body { margin: 0mm; }
 	.no-print { display: none !important; }
 	#cal-print { display: block; }
     }
