@@ -204,7 +204,7 @@ var eventFromTeachersPerspective = function(event){
 		var dateOffset = teachers.indexOf(teacher),
 		    startTime = offsetTime(event.startTime, dateOffset),
 		    endTime = offsetTime(event.endTime, dateOffset),
-		    initials = event.students.map( function(name){ return name[0] } ).join(', ');
+		    initials = event.students.map( function(name){ return name.substr(0,2) } ).join(', ');
 
 		return {
 			id: event.id,
